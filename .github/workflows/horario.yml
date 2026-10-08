@@ -1,0 +1,44 @@
+name: Actualizar horario
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install playwright
+      - run: playwright install --with-deps chromium
+      - name: Descargar horario
+        env:
+          UC3M_USER: ${{ secrets.UC3M_USER }}
+          UC3M_PASS: ${{ secrets.UC3M_PASS }}
+          UC3M_ICS_URL: ${{ secrets.UC3M_ICS_URL }}
+        run: python descargar.py
+      - name: Preparar sitio
+        env:
+          NOMBRE: ${{ secrets.UC3M_ICS_NAME }}
+        run: |
+          mkdir site
+          cp horario.ics "site/$NOMBRE"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
